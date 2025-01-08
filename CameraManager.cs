@@ -221,6 +221,21 @@ namespace BaslerCamera
             }
         }
 
+
+
+        // Add this method to CameraManager class
+        public Bitmap GetCurrentImage()
+        {
+            lock (imageLock)
+            {
+                if (currentImage == null)
+                {
+                    return null;
+                }
+                return new Bitmap(currentImage); // Return a copy of the current image
+            }
+        }
+
         // Modify ProcessImagesAsync to apply zoom
         // Modify ProcessImagesAsync method in CameraManager.cs
 

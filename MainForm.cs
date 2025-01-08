@@ -31,13 +31,22 @@ namespace BaslerCameraForm
         // Add this field at the class level in MainForm.cs
         private MouseCrosshairOverlay mouseCrosshairOverlay;
 
+        // Add these fields to the MainForm class
+        private CheckBox chkSaveOnClick;
+        private ClickImageSaver clickImageSaver;
+
+
         public MainForm()
         {
             InitializeComponent();
             InitializeLogger();
             InitializeComponents();
+            // Add this call in the MainForm constructor after InitializeComponents()
+            AddSaveOnClickControl();
+            SetupClickImageSaver();
             AddZoomControls(); // Add this line
             AddCrosshairUnitControl(); // Add this line
+
             SetupEventHandlers();
         }
 
@@ -241,30 +250,66 @@ namespace BaslerCameraForm
 
         }
 
-        // Add the event handler method:
-
-        // Update the MouseCrosshairOverlay_MouseLocationClicked method
-        // Update the MouseCrosshairOverlay_MouseLocationClicked method
         private void MouseCrosshairOverlay_MouseLocationClicked(object sender, MouseLocationEventArgs e)
         {
-            // Update status strip with click location including physical distances
-            lblStatus.Text = $"Clicked at: ({e.ScaledLocation.X}, {e.ScaledLocation.Y}) " +
-                             $"Physical: ({e.PhysicalDistanceX:F1}µm, {e.PhysicalDistanceY:F1}µm) " +
-                             $"Zoom: {e.ZoomFactor:F1}x";
+            try
+            {
+                _logger.Information("MouseCrosshairOverlay_MouseLocationClicked entered");
+                _logger.Information("Save on click checkbox state: {IsChecked}", chkSaveOnClick.Checked);
 
-            // Log the click event with all information
-            _logger.Information(
-                "Mouse clicked - Screen: ({ScreenX}, {ScreenY}), " +
-                "Scaled: ({ScaledX}, {ScaledY}), " +
-                "Physical: ({DistanceX:F1}µm, {DistanceY:F1}µm), " +
-                "Zoom: {Zoom:F1}x",
-                e.ScreenLocation.X, e.ScreenLocation.Y,
-                e.ScaledLocation.X, e.ScaledLocation.Y,
-                e.PhysicalDistanceX, e.PhysicalDistanceY,
-                e.ZoomFactor
-            );
+                // Update status strip with click location including physical distances
+                lblStatus.Text = $"Clicked at: ({e.ScaledLocation.X}, {e.ScaledLocation.Y}) " +
+                                 $"Physical: ({e.PhysicalDistanceX:F1}µm, {e.PhysicalDistanceY:F1}µm) " +
+                                 $"Zoom: {e.ZoomFactor:F1}x";
+
+                // Save image if checkbox is checked
+                if (chkSaveOnClick.Checked)
+                {
+                    _logger.Information("Save on click is enabled, attempting to save image...");
+
+                    if (cameraManager == null)
+                    {
+                        _logger.Warning("Cannot save image - CameraManager is null");
+                        return;
+                    }
+
+                    try
+                    {
+                        using (var currentImage = cameraManager.GetCurrentImage())
+                        {
+                            if (currentImage == null)
+                            {
+                                _logger.Warning("Cannot save image - No current image available from camera");
+                                return;
+                            }
+
+                            _logger.Information("Retrieved image from camera, size: {Width}x{Height}",
+                                currentImage.Width, currentImage.Height);
+
+                            clickImageSaver.SaveClickedImage(currentImage, e);
+                            _logger.Information("SaveClickedImage completed successfully");
+                            lblStatus.Text = "Image and metadata saved successfully";
+                        }
+                    }
+                    catch (Exception saveEx)
+                    {
+                        _logger.Error(saveEx, "Failed to save clicked image");
+                        MessageBox.Show($"Error saving clicked image: {saveEx.Message}", "Save Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                else
+                {
+                    _logger.Information("Save on click is disabled, skipping save");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error in MouseCrosshairOverlay_MouseLocationClicked");
+                MessageBox.Show($"Error processing click: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
-        // Add this new method to handle the save frame functionality
         private void BtnSaveFrame_Click(object sender, EventArgs e)
         {
             try
@@ -369,12 +414,48 @@ namespace BaslerCameraForm
             }
         }
 
+
+        // Add this to InitializeComponents() after other controls
+        private void AddSaveOnClickControl()
+        {
+            // Create save on click checkbox
+            chkSaveOnClick = new CheckBox
+            {
+                Text = "Save Image After Click",
+                Dock = DockStyle.Bottom,
+                Height = 30,
+                Checked = false
+            };
+
+            // Add the control to the form
+            Controls.Add(chkSaveOnClick);
+        }
+
+
+        // Modify SetupClickImageSaver to not duplicate the click handler
+        private void SetupClickImageSaver()
+        {
+            try
+            {
+                clickImageSaver = new ClickImageSaver(_logger);
+                _logger.Information("ClickImageSaver initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error initializing ClickImageSaver");
+                MessageBox.Show($"Error initializing image saver: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+
         // Modify the MainForm_FormClosing method to dispose of the crosshair overlay:
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             try
             {
                 cameraManager.DisconnectCamera();
+                clickImageSaver?.Dispose();
                 // Stop live view if it's running
                 if (cameraManager != null)
                 {
