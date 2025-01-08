@@ -9,7 +9,8 @@ public class CrosshairOverlay : IImageOverlay
     private readonly PictureBox _pictureBox;
     private Bitmap _overlayBitmap;
     private Graphics _overlayGraphics;
-    private bool _showCrosshair = true;
+    private bool _showCrosshair = false;
+    private bool _showLabels = false;  // New field for controlling label visibility
     private Color _crosshairColor = Color.Blue;
     private float _lineThickness = 1.0f;
     private bool _isInitialized = false;
@@ -56,7 +57,19 @@ public class CrosshairOverlay : IImageOverlay
             }
         }
     }
-
+    // Add new property for label visibility
+    public bool ShowLabels
+    {
+        get => _showLabels;
+        set
+        {
+            _showLabels = value;
+            if (_showCrosshair)
+            {
+                DrawCrosshair();
+            }
+        }
+    }
     public Color CrosshairColor
     {
         get => _crosshairColor;
@@ -152,15 +165,18 @@ public class CrosshairOverlay : IImageOverlay
             // Draw vertical tick for X-axis
             g.DrawLine(pen, x, y - TickLength / 2, x, y + TickLength / 2);
 
-            // Draw vertical label for X-axis
-            using (var brush = new SolidBrush(_crosshairColor))
+            // Draw label only if ShowLabels is true
+            if (_showLabels)
             {
-                var size = g.MeasureString(label, _labelFontVertical);
-                var state = g.Save();
-                g.TranslateTransform(x, y + TickLength);
-                g.RotateTransform(90);
-                g.DrawString(label, _labelFontVertical, brush, 0, -size.Width / 2);
-                g.Restore(state);
+                using (var brush = new SolidBrush(_crosshairColor))
+                {
+                    var size = g.MeasureString(label, _labelFontVertical);
+                    var state = g.Save();
+                    g.TranslateTransform(x, y + TickLength);
+                    g.RotateTransform(90);
+                    g.DrawString(label, _labelFontVertical, brush, 0, -size.Width / 2);
+                    g.Restore(state);
+                }
             }
         }
         else
@@ -168,15 +184,17 @@ public class CrosshairOverlay : IImageOverlay
             // Draw horizontal tick for Y-axis
             g.DrawLine(pen, x - TickLength / 2, y, x + TickLength / 2, y);
 
-            // Draw label
-            using (var brush = new SolidBrush(_crosshairColor))
+            // Draw label only if ShowLabels is true
+            if (_showLabels)
             {
-                var size = g.MeasureString(label, _labelFont);
-                g.DrawString(label, _labelFont, brush, x + TickLength, y - size.Height / 2);
+                using (var brush = new SolidBrush(_crosshairColor))
+                {
+                    var size = g.MeasureString(label, _labelFont);
+                    g.DrawString(label, _labelFont, brush, x + TickLength, y - size.Height / 2);
+                }
             }
         }
     }
-
     // Rest of the existing methods remain the same...
     private void EnsureInitialized()
     {

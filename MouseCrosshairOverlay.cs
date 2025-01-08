@@ -4,7 +4,7 @@ using System.Windows.Forms;
 using BaslerCamera;
 using Serilog;
 
-public class MouseCrosshairOverlay : IDisposable
+public class MouseCrosshairOverlay : IImageOverlay
 {
     private readonly PictureBox _pictureBox;
     private readonly ILogger _logger;
@@ -19,6 +19,9 @@ public class MouseCrosshairOverlay : IDisposable
     private const double PixelSizeY = 5.3;
 
     public event EventHandler<MouseLocationEventArgs> MouseLocationClicked;
+
+
+    bool IImageOverlay.Visible { get; set; }
 
     public MouseCrosshairOverlay(PictureBox pictureBox, ILogger logger)
     {
