@@ -100,13 +100,18 @@ namespace BaslerCamera
             _logger.Information("Live view stopped");
         }
 
+        // In CameraManager.cs, modify the ImageView_Paint method:
         private void ImageView_Paint(object sender, PaintEventArgs e)
         {
             lock (imageLock)
             {
                 if (currentImage != null)
                 {
+                    // Draw the camera image
                     e.Graphics.DrawImage(currentImage, 0, 0, imageView.Width, imageView.Height);
+
+                    // Signal that the base image has been drawn
+                    imageView.InvokePaintLayers(e);
                 }
             }
         }
@@ -292,6 +297,19 @@ namespace BaslerCamera
             currentImage?.Dispose();
             imageView.Paint -= ImageView_Paint;
             imageView.MouseClick -= ImageView_MouseClick;
+        }
+
+
+    }
+
+    // Add this extension method in a new file or at the bottom of CameraManager.cs:
+    public static class PictureBoxExtensions
+    {
+        public static event EventHandler<PaintEventArgs> PaintLayers;
+
+        public static void InvokePaintLayers(this PictureBox pictureBox, PaintEventArgs e)
+        {
+            PaintLayers?.Invoke(pictureBox, e);
         }
     }
 }
