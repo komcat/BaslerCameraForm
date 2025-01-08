@@ -30,6 +30,7 @@ namespace BaslerCameraForm
             InitializeComponent();
             InitializeLogger();
             InitializeComponents();
+            AddZoomControls(); // Add this line
             SetupEventHandlers();
         }
 
@@ -45,12 +46,26 @@ namespace BaslerCameraForm
         {
 
 
-            // Create and configure PictureBox
             pictureBox = new PictureBox
             {
-                Dock = DockStyle.Fill,
-                SizeMode = PictureBoxSizeMode.Zoom
+                Dock = DockStyle.None,
+                SizeMode = PictureBoxSizeMode.CenterImage,
+                BackColor = Color.Black,
+                Size = new Size(800, 600),  // Set fixed size
+                Location = new Point(0, 0)
             };
+
+            // Add panel to contain PictureBox
+            Panel picturePanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true,
+                BackColor = Color.Black,
+                Padding = new Padding(0),
+                Margin = new Padding(0)
+            };
+            picturePanel.Controls.Add(pictureBox);
+            //Controls.Add(picturePanel);
 
             // Create buttons
             btnConnect = new Button
@@ -114,7 +129,7 @@ namespace BaslerCameraForm
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             cmbCrosshairColor.Items.AddRange(new object[] { "Blue", "Red", "Green", "Yellow", "White" });
-            cmbCrosshairColor.SelectedIndex = 0;
+            cmbCrosshairColor.SelectedIndex = 3;
 
             // Create line thickness control
             nudLineThickness = new NumericUpDown
@@ -323,16 +338,141 @@ namespace BaslerCameraForm
         {
             try
             {
+                cameraManager.DisconnectCamera();
+                // Stop live view if it's running
+                if (cameraManager != null)
+                {
+                    if (btnStopGrab.Enabled)  // This indicates live view is active
+                    {
+                        cameraManager.StopLiveView();
+                    }
+
+                    // Update UI to reflect stopped state
+                    btnStartGrab.Enabled = true;
+                    btnStopGrab.Enabled = false;
+                    lblStatus.Text = "Stopped";
+                }
+
+                // Dispose of overlays and controls
                 crosshairOverlay?.Dispose();
-                cameraManager?.Dispose();
+
+                // Clean up camera manager
+                if (cameraManager != null)
+                {
+                    cameraManager.Dispose();
+                    cameraManager = null;
+                }
+
+                
+
+                // Reset UI state
+                btnConnect.Enabled = true;
+                btnStartGrab.Enabled = false;
+                btnStopGrab.Enabled = false;
+                btnCameraInfo.Enabled = false;
+                btnSaveFrame.Enabled = false;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error disposing resources");
+                _logger?.Error(ex, "Error during form closing");
+                MessageBox.Show($"Error while closing: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
+        // In MainForm.cs, add these new fields
+        private ComboBox cmbZoom;
+        private float currentZoom = 1.0f;
 
+        // Add this to InitializeComponents() in MainForm.cs
+        private void AddZoomControls()
+        {
+            // Create zoom dropdown
+            cmbZoom = new ComboBox
+            {
+                Dock = DockStyle.Bottom,
+                Height = 30,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
 
+            cmbZoom.Items.AddRange(new object[] { "0.5x", "1.0x", "1.5x", "2.0x" });
+            cmbZoom.SelectedIndex = 1; // Default to 1.0x
+
+            // Create label for zoom
+            Label lblZoom = new Label
+            {
+                Text = "Zoom:",
+                Dock = DockStyle.Bottom,
+                Height = 20
+            };
+
+            // Add controls to form
+            Controls.Add(cmbZoom);
+            Controls.Add(lblZoom);
+
+            // Set up event handler
+            cmbZoom.SelectedIndexChanged += CmbZoom_SelectedIndexChanged;
+        }
+
+        // Add this method to MainForm.cs
+        // Update the CmbZoom_SelectedIndexChanged method in MainForm.cs
+        private void CmbZoom_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            string zoomText = cmbZoom.SelectedItem.ToString();
+            float newZoom = float.Parse(zoomText.TrimEnd('x'));
+
+            // Update zoom level
+            currentZoom = newZoom;
+
+            // Update camera manager zoom
+            if (cameraManager != null)
+            {
+                cameraManager.SetZoom(currentZoom);
+            }
+
+            // Update crosshair overlay
+            if (crosshairOverlay != null)
+            {
+                crosshairOverlay.UpdateZoom(currentZoom);
+            }
+        }
+        private void UpdatePictureBoxLayout()
+        {
+            if (pictureBox.Image != null)
+            {
+                // Set appropriate PictureBox properties for zooming
+                pictureBox.SizeMode = PictureBoxSizeMode.CenterImage;
+
+                // Calculate container dimensions
+                int containerWidth = ClientSize.Width;
+                int containerHeight = ClientSize.Height - (ClientSize.Height - pictureBox.Height);
+
+                // Center the PictureBox in its container
+                pictureBox.Left = (containerWidth - pictureBox.Width) / 2;
+                pictureBox.Top = (containerHeight - pictureBox.Height) / 2;
+            }
+        }
+        private void UpdateImageViewForZoom()
+        {
+            if (currentZoom == 1.0f)
+            {
+                pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+            }
+            else
+            {
+                pictureBox.SizeMode = PictureBoxSizeMode.CenterImage;
+                if (pictureBox.Image != null)
+                {
+                    int newWidth = (int)(pictureBox.Image.Width * currentZoom);
+                    int newHeight = (int)(pictureBox.Image.Height * currentZoom);
+
+                    // Center the zoomed image
+                    pictureBox.Width = newWidth;
+                    pictureBox.Height = newHeight;
+                    pictureBox.Left = (ClientSize.Width - newWidth) / 2;
+                    pictureBox.Top = (ClientSize.Height - newHeight) / 2;
+                }
+            }
+            pictureBox.Invalidate();
+        }
     }
 }

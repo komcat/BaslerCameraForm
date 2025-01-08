@@ -23,7 +23,7 @@ public class CrosshairOverlay : IDisposable
     private const int TickLength = 10; // Length of tick marks in pixels
     private readonly Font _labelFont = new Font("Arial", 6);
     private readonly Font _labelFontVertical = new Font("Arial", 6);
-
+    private float _zoomFactor = 1.0f;
     public bool ShowCrosshair
     {
         get => _showCrosshair;
@@ -97,9 +97,9 @@ public class CrosshairOverlay : IDisposable
     {
         foreach (int interval in _tickIntervals)
         {
-            // Calculate pixel distance for the current interval
-            int pixelsX = (int)(interval / PixelSizeX);
-            int pixelsY = (int)(interval / PixelSizeY);
+            // Calculate pixel distance for the current interval, accounting for zoom
+            int pixelsX = (int)((interval / PixelSizeX) * _zoomFactor);
+            int pixelsY = (int)((interval / PixelSizeY) * _zoomFactor);
 
             // Draw X-axis ticks and labels (positive and negative)
             DrawTick(g, centerX + pixelsX, centerY, true, pen, $"+{interval}µm");
@@ -197,6 +197,17 @@ public class CrosshairOverlay : IDisposable
     private void PictureBox_Resize(object sender, EventArgs e)
     {
         InitializeOverlay();
+    }
+
+
+
+    public void UpdateZoom(float zoom)
+    {
+        _zoomFactor = zoom;
+        if (_showCrosshair)
+        {
+            DrawCrosshair();
+        }
     }
 
     public void Dispose()
