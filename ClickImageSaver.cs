@@ -122,13 +122,77 @@ public class ClickImageSaver : IDisposable
             throw;
         }
     }
+    public void SaveImageFromExternalTrigger(Bitmap image, ExternalTriggerData triggerData, float currentZoom)
+    {
+        try
+        {
+            _logger.Information("Starting SaveImageFromExternalTrigger operation");
 
+            string timestamp = DateTime.Now.ToString("HHmmss-fff");
+            string imageFilename = $"click_{timestamp}.png";
+            string metadataFilename = $"click_{timestamp}.json";
+
+            string imagePath = Path.Combine(_baseDirectory, IMAGE_DIRECTORY, imageFilename);
+            string metadataPath = Path.Combine(_baseDirectory, METADATA_DIRECTORY, metadataFilename);
+
+            _logger.Information("Saving image to: {ImagePath}", imagePath);
+
+            // Save image
+            using (var clonedImage = new Bitmap(image))
+            {
+                clonedImage.Save(imagePath, System.Drawing.Imaging.ImageFormat.Png);
+            }
+
+            _logger.Information("Image saved successfully, creating metadata");
+
+            var dimensions = new ImageDimensions
+            {
+                Width = image.Width,
+                Height = image.Height,
+                Unit = "pixels"
+            };
+
+            // Create metadata using the static factory method
+            var metadata = ClickMetadata.FromExternalTrigger(triggerData, imageFilename, dimensions, currentZoom);
+
+            _logger.Information("Saving metadata to: {MetadataPath}", metadataPath);
+
+            // Save metadata
+            string jsonString = JsonConvert.SerializeObject(metadata, Formatting.Indented,
+                new JsonSerializerSettings
+                {
+                    NullValueHandling = NullValueHandling.Ignore,
+                    DateFormatString = "yyyy-MM-dd HH:mm:ss.fff"
+                });
+            File.WriteAllText(metadataPath, jsonString);
+
+            _logger.Information("Successfully saved image and metadata from external trigger");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error saving image from external trigger");
+            throw;
+        }
+    }
     public void Dispose()
     {
         // No resources to dispose currently
     }
 }
+// Add this class to represent external trigger data
+public class ExternalTriggerData
+{
+    public Point ClickLocation { get; set; }
+    public int ProcessId { get; set; }
+    public string ProcessName { get; set; }
 
+    public ExternalTriggerData(Point clickLocation, int processId = 0, string processName = null)
+    {
+        ClickLocation = clickLocation;
+        ProcessId = processId;
+        ProcessName = processName;
+    }
+}
 // Classes for JSON metadata structure with Newtonsoft.Json attributes
 // Update the ClickMetadata class with new fields
 public class ClickMetadata
@@ -162,6 +226,34 @@ public class ClickMetadata
 
     [JsonProperty("processName")]
     public string ProcessName { get; set; } = null;  // Default value of null
+
+    public static ClickMetadata FromExternalTrigger(ExternalTriggerData triggerData, string imageFile,
+        ImageDimensions dimensions, float zoomFactor)
+    {
+        return new ClickMetadata
+        {
+            Timestamp = DateTime.Now,
+            ImageFile = imageFile,
+            ScreenLocation = new Point2D { X = triggerData.ClickLocation.X, Y = triggerData.ClickLocation.Y },
+            ScaledLocation = new Point2D { X = triggerData.ClickLocation.X, Y = triggerData.ClickLocation.Y },
+            PhysicalDistance = new PhysicalDistance
+            {
+                X = triggerData.ClickLocation.X * 5.3, // Using the standard pixel size
+                Y = triggerData.ClickLocation.Y * 5.3,
+                Unit = "micrometers"
+            },
+            ZoomFactor = zoomFactor,
+            PixelCalibration = new PixelCalibration
+            {
+                XSize = 5.3,
+                YSize = 5.3,
+                Unit = "micrometers/pixel"
+            },
+            ImageDimensions = dimensions,
+            ProcessId = triggerData.ProcessId,
+            ProcessName = triggerData.ProcessName
+        };
+    }
 }
 
 public class Point2D

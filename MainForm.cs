@@ -643,5 +643,39 @@ namespace BaslerCameraForm
                 }
             };
         }
+
+        public bool SaveImageFromExternalTrigger(Point location, int processId = 0, string processName = null)
+        {
+            try
+            {
+                _logger.Information("External trigger received at location: ({X}, {Y})", location.X, location.Y);
+
+                if (cameraManager == null)
+                {
+                    _logger.Warning("Cannot save image - CameraManager is null");
+                    return false;
+                }
+
+                using (var currentImage = cameraManager.GetCurrentImage())
+                {
+                    if (currentImage == null)
+                    {
+                        _logger.Warning("Cannot save image - No current image available from camera");
+                        return false;
+                    }
+
+                    var triggerData = new ExternalTriggerData(location, processId, processName);
+                    clickImageSaver.SaveImageFromExternalTrigger(currentImage, triggerData, currentZoom);
+
+                    lblStatus.Text = $"Image saved from external trigger (Process: {processName ?? "Unknown"})";
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error saving image from external trigger");
+                return false;
+            }
+        }
     }
 }
