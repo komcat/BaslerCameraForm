@@ -3,7 +3,8 @@ using System.Drawing;
 using System.Windows.Forms;
 using System;
 
-public class CrosshairOverlay : IDisposable
+
+public class CrosshairOverlay : IImageOverlay
 {
     private readonly PictureBox _pictureBox;
     private Bitmap _overlayBitmap;
@@ -24,7 +25,7 @@ public class CrosshairOverlay : IDisposable
     private readonly Font _labelFont = new Font("Arial", 6);
     private readonly Font _labelFontVertical = new Font("Arial", 6);
     private float _zoomFactor = 1.0f;
-
+    public bool Visible { get; set; }
     public bool ShowInMicrometers
     {
         get => _showInMicrometers;

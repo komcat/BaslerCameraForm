@@ -87,6 +87,8 @@
     <Compile Include="CameraManager.cs" />
     <Compile Include="ClickImageSaver.cs" />
     <Compile Include="CrosshairOverlay.cs" />
+    <Compile Include="IImageOverlay.cs" />
+    <Compile Include="ImageOverlayManager.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
