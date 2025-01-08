@@ -25,12 +25,19 @@ namespace BaslerCameraForm
         private CheckBox chkShowCrosshair;
         private ComboBox cmbCrosshairColor;
         private NumericUpDown nudLineThickness;
+
+
+
+        // Add this field at the class level in MainForm.cs
+        private MouseCrosshairOverlay mouseCrosshairOverlay;
+
         public MainForm()
         {
             InitializeComponent();
             InitializeLogger();
             InitializeComponents();
             AddZoomControls(); // Add this line
+            AddCrosshairUnitControl(); // Add this line
             SetupEventHandlers();
         }
 
@@ -38,6 +45,7 @@ namespace BaslerCameraForm
         {
             _logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
+                .WriteTo.Console() // Add console output
                 .WriteTo.File("camera_log.txt", rollingInterval: RollingInterval.Day)
                 .CreateLogger();
         }
@@ -184,6 +192,8 @@ namespace BaslerCameraForm
             // Add to SetupEventHandlers()
             btnSaveFrame.Click += BtnSaveFrame_Click;
 
+            // Update the initialization of mouseCrosshairOverlay in InitializeComponents():
+            mouseCrosshairOverlay = new MouseCrosshairOverlay(pictureBox, _logger);
 
         }
 
@@ -225,9 +235,35 @@ namespace BaslerCameraForm
 
             nudLineThickness.ValueChanged += (s, e) =>
                 crosshairOverlay.LineThickness = (float)nudLineThickness.Value;
+
+            // Add the event handler setup in SetupEventHandlers():
+            mouseCrosshairOverlay.MouseLocationClicked += MouseCrosshairOverlay_MouseLocationClicked;
+
         }
 
+        // Add the event handler method:
 
+        // Update the MouseCrosshairOverlay_MouseLocationClicked method
+        // Update the MouseCrosshairOverlay_MouseLocationClicked method
+        private void MouseCrosshairOverlay_MouseLocationClicked(object sender, MouseLocationEventArgs e)
+        {
+            // Update status strip with click location including physical distances
+            lblStatus.Text = $"Clicked at: ({e.ScaledLocation.X}, {e.ScaledLocation.Y}) " +
+                             $"Physical: ({e.PhysicalDistanceX:F1}µm, {e.PhysicalDistanceY:F1}µm) " +
+                             $"Zoom: {e.ZoomFactor:F1}x";
+
+            // Log the click event with all information
+            _logger.Information(
+                "Mouse clicked - Screen: ({ScreenX}, {ScreenY}), " +
+                "Scaled: ({ScaledX}, {ScaledY}), " +
+                "Physical: ({DistanceX:F1}µm, {DistanceY:F1}µm), " +
+                "Zoom: {Zoom:F1}x",
+                e.ScreenLocation.X, e.ScreenLocation.Y,
+                e.ScaledLocation.X, e.ScaledLocation.Y,
+                e.PhysicalDistanceX, e.PhysicalDistanceY,
+                e.ZoomFactor
+            );
+        }
         // Add this new method to handle the save frame functionality
         private void BtnSaveFrame_Click(object sender, EventArgs e)
         {
@@ -274,7 +310,7 @@ namespace BaslerCameraForm
                     btnStartGrab.Enabled = true;
                     btnCameraInfo.Enabled = true;
                     btnSaveFrame.Enabled = true;
-                    
+
                 }
                 else
                 {
@@ -363,7 +399,7 @@ namespace BaslerCameraForm
                     cameraManager = null;
                 }
 
-                
+
 
                 // Reset UI state
                 btnConnect.Enabled = true;
@@ -371,6 +407,22 @@ namespace BaslerCameraForm
                 btnStopGrab.Enabled = false;
                 btnCameraInfo.Enabled = false;
                 btnSaveFrame.Enabled = false;
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error(ex, "Error during form closing");
+                MessageBox.Show($"Error while closing: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            try
+            {
+                if (mouseCrosshairOverlay != null)
+                {
+                    mouseCrosshairOverlay.MouseLocationClicked -= MouseCrosshairOverlay_MouseLocationClicked;
+                    mouseCrosshairOverlay.Dispose();
+                }
+
+                // Rest of the existing closing code...
             }
             catch (Exception ex)
             {
@@ -415,6 +467,8 @@ namespace BaslerCameraForm
 
         // Add this method to MainForm.cs
         // Update the CmbZoom_SelectedIndexChanged method in MainForm.cs
+        // Update the CmbZoom_SelectedIndexChanged method in MainForm.cs
+        // Update the CmbZoom_SelectedIndexChanged method in MainForm.cs
         private void CmbZoom_SelectedIndexChanged(object sender, EventArgs e)
         {
             string zoomText = cmbZoom.SelectedItem.ToString();
@@ -433,6 +487,12 @@ namespace BaslerCameraForm
             if (crosshairOverlay != null)
             {
                 crosshairOverlay.UpdateZoom(currentZoom);
+            }
+
+            // Update mouse crosshair overlay
+            if (mouseCrosshairOverlay != null)
+            {
+                mouseCrosshairOverlay.UpdateZoom(currentZoom);
             }
         }
         private void UpdatePictureBoxLayout()
@@ -473,6 +533,34 @@ namespace BaslerCameraForm
                 }
             }
             pictureBox.Invalidate();
+        }
+
+        // Add this to the class-level declarations in MainForm.cs
+        private CheckBox chkShowMicrometers;
+
+        // Add this to InitializeComponents() after the other crosshair controls
+        private void AddCrosshairUnitControl()
+        {
+            // Create micrometers/pixels toggle
+            chkShowMicrometers = new CheckBox
+            {
+                Text = "Show in Micrometers",
+                Dock = DockStyle.Bottom,
+                Height = 30,
+                Checked = true
+            };
+
+            // Add the control to the form
+            Controls.Add(chkShowMicrometers);
+
+            // Add event handler
+            chkShowMicrometers.CheckedChanged += (s, e) =>
+            {
+                if (crosshairOverlay != null)
+                {
+                    crosshairOverlay.ShowInMicrometers = chkShowMicrometers.Checked;
+                }
+            };
         }
     }
 }

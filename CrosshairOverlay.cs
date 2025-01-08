@@ -1,8 +1,7 @@
-﻿using System.Drawing;
+﻿using BaslerCamera;
+using System.Drawing;
 using System.Windows.Forms;
 using System;
-using System.Collections.Generic;
-using BaslerCamera;
 
 public class CrosshairOverlay : IDisposable
 {
@@ -13,6 +12,7 @@ public class CrosshairOverlay : IDisposable
     private Color _crosshairColor = Color.Blue;
     private float _lineThickness = 1.0f;
     private bool _isInitialized = false;
+    private bool _showInMicrometers = true; // New property to toggle between μm and pixels
 
     // Pixel size in micrometers
     private const double PixelSizeX = 5.3;
@@ -24,6 +24,20 @@ public class CrosshairOverlay : IDisposable
     private readonly Font _labelFont = new Font("Arial", 6);
     private readonly Font _labelFontVertical = new Font("Arial", 6);
     private float _zoomFactor = 1.0f;
+
+    public bool ShowInMicrometers
+    {
+        get => _showInMicrometers;
+        set
+        {
+            _showInMicrometers = value;
+            if (_showCrosshair)
+            {
+                DrawCrosshair();
+            }
+        }
+    }
+
     public bool ShowCrosshair
     {
         get => _showCrosshair;
@@ -101,13 +115,32 @@ public class CrosshairOverlay : IDisposable
             int pixelsX = (int)((interval / PixelSizeX) * _zoomFactor);
             int pixelsY = (int)((interval / PixelSizeY) * _zoomFactor);
 
-            // Draw X-axis ticks and labels (positive and negative)
-            DrawTick(g, centerX + pixelsX, centerY, true, pen, $"+{interval}µm");
-            DrawTick(g, centerX - pixelsX, centerY, true, pen, $"-{interval}µm");
+            string labelPositive, labelNegative;
+            if (_showInMicrometers)
+            {
+                labelPositive = $"+{interval}µm";
+                labelNegative = $"-{interval}µm";
+            }
+            else
+            {
+                labelPositive = $"+{pixelsX}px";
+                labelNegative = $"-{pixelsX}px";
+            }
 
-            // Draw Y-axis ticks and labels (positive and negative)
-            DrawTick(g, centerX, centerY + pixelsY, false, pen, $"+{interval}µm");
-            DrawTick(g, centerX, centerY - pixelsY, false, pen, $"-{interval}µm");
+            // Draw X-axis ticks and labels
+            DrawTick(g, centerX + pixelsX, centerY, true, pen, labelPositive);
+            DrawTick(g, centerX - pixelsX, centerY, true, pen, labelNegative);
+
+            // For Y-axis, use pixelsY if showing in pixels
+            if (!_showInMicrometers)
+            {
+                labelPositive = $"+{pixelsY}px";
+                labelNegative = $"-{pixelsY}px";
+            }
+
+            // Draw Y-axis ticks and labels
+            DrawTick(g, centerX, centerY + pixelsY, false, pen, labelPositive);
+            DrawTick(g, centerX, centerY - pixelsY, false, pen, labelNegative);
         }
     }
 
@@ -122,17 +155,10 @@ public class CrosshairOverlay : IDisposable
             using (var brush = new SolidBrush(_crosshairColor))
             {
                 var size = g.MeasureString(label, _labelFontVertical);
-                // Save the current graphics state
                 var state = g.Save();
-
-                // Translate to the text location and rotate
                 g.TranslateTransform(x, y + TickLength);
                 g.RotateTransform(90);
-
-                // Draw the rotated text
                 g.DrawString(label, _labelFontVertical, brush, 0, -size.Width / 2);
-
-                // Restore the graphics state
                 g.Restore(state);
             }
         }
@@ -150,6 +176,7 @@ public class CrosshairOverlay : IDisposable
         }
     }
 
+    // Rest of the existing methods remain the same...
     private void EnsureInitialized()
     {
         if (!_isInitialized)
@@ -198,8 +225,6 @@ public class CrosshairOverlay : IDisposable
     {
         InitializeOverlay();
     }
-
-
 
     public void UpdateZoom(float zoom)
     {
