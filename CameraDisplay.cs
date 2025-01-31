@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using Serilog;
 using BaslerCamera;
+using System.IO;
 
 namespace BaslerCameraForm
 {
@@ -142,7 +143,50 @@ namespace BaslerCameraForm
         {
             return _cameraManager?.SaveCurrentFrame(filePath) ?? false;
         }
+        public bool SaveImageWithContext(string context)
+        {
+            try
+            {
+                // Create base directory if it doesn't exist
+                string baseDirectory = Path.Combine(Application.StartupPath, "SavedImages");
+                if (!Directory.Exists(baseDirectory))
+                {
+                    Directory.CreateDirectory(baseDirectory);
+                }
 
+                // Create dated folder
+                string dateFolder = DateTime.Now.ToString("yyyy-MM-dd");
+                string saveDirectory = Path.Combine(baseDirectory, dateFolder);
+                if (!Directory.Exists(saveDirectory))
+                {
+                    Directory.CreateDirectory(saveDirectory);
+                }
+
+                // Generate filename with context and timestamp
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                string filename = $"{context}_{timestamp}.png";
+                string fullPath = Path.Combine(saveDirectory, filename);
+
+                // Save the image
+                bool saved = SaveCurrentFrame(fullPath);
+
+                if (saved)
+                {
+                    _logger.Information("Image saved successfully with context: {Context}, Path: {Path}", context, fullPath);
+                }
+                else
+                {
+                    _logger.Error("Failed to save image with context: {Context}", context);
+                }
+
+                return saved;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error saving image with context: {Context}", context);
+                return false;
+            }
+        }
         public void Dispose()
         {
             try
