@@ -34,7 +34,7 @@ namespace BaslerCamera
         private DateTime lastFrameTime = DateTime.MinValue;
         private float currentZoom = 1.0f;
         private Size originalImageSize;
-
+        public float GetCurrentZoom() => currentZoom;
         private const int MaxWidth = 1281;
         private const int MaxHeight = 1025;
         public CameraManager(PictureBox imageView, ILogger logger)

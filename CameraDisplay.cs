@@ -17,6 +17,8 @@ namespace BaslerCameraForm
         private CameraManager _cameraManager;
         private ClickImageSaver _clickImageSaver;
         private float _currentZoom = 1.0f;
+        // Add public property with getter
+        public CameraManager CameraManager => _cameraManager;
 
         public event EventHandler<MouseLocationEventArgs> ImageClicked;
 
@@ -66,6 +68,8 @@ namespace BaslerCameraForm
                 _cameraManager = new CameraManager(_pictureBox, _logger);
                 if (_cameraManager.ConnectToCamera())
                 {
+                    _cameraManager.SetZoom(2);
+
                     _cameraManager.StartLiveView();
                     _logger.Information("Camera connected and live view started successfully");
                     return true;
