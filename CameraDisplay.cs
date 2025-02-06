@@ -68,7 +68,7 @@ namespace BaslerCameraForm
                 _cameraManager = new CameraManager(_pictureBox, _logger);
                 if (_cameraManager.ConnectToCamera())
                 {
-                    _cameraManager.SetZoom(2);
+                    _cameraManager.SetZoom(1);
 
                     _cameraManager.StartLiveView();
                     _logger.Information("Camera connected and live view started successfully");

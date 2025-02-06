@@ -55,6 +55,28 @@ namespace BaslerCamera
                 camera.CameraOpened += Configuration.AcquireContinuous;
                 camera.Open();
 
+                // Set Exposure Auto to Continuous
+                if (camera.Parameters.Contains(PLCamera.ExposureAuto))
+                {
+                    camera.Parameters[PLCamera.ExposureAuto].SetValue(PLCamera.ExposureAuto.Continuous);
+                    _logger.Information("Set Exposure Auto to Continuous");
+                }
+                else
+                {
+                    _logger.Warning("Camera does not support ExposureAuto parameter");
+                }
+
+                // Set Gain Auto to Continuous
+                if (camera.Parameters.Contains(PLCamera.GainAuto))
+                {
+                    //camera.Parameters[PLCamera.GainAuto].SetValue(PLCamera.GainAuto.Continuous);
+                    _logger.Information("Set Gain Auto to Continuous");
+                }
+                else
+                {
+                    _logger.Warning("Camera does not support GainAuto parameter");
+                }
+
                 camera.StreamGrabber.ImageGrabbed += OnImageGrabbed;
 
                 _logger.Information("Camera connected successfully");
